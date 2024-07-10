@@ -1,13 +1,13 @@
-package com.boboo.ai;
+package com.boboo.llm;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SpringbootOllamaApplication {
+public class SpringbootLLMApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(SpringbootOllamaApplication.class, args);
+		SpringApplication.run(SpringbootLLMApplication.class, args);
 	}
 
 }
