@@ -65,7 +65,7 @@
                 <artifactId>docker-maven-plugin</artifactId>
                 <configuration>
                     <imageName>springboot/ollama</imageName>
-                    <dockerDirectory>/docker</dockerDirectory>
+                    <dockerDirectory>src/main/docker</dockerDirectory>
                     <resources>
                         <resource>
                             <targetPath>/</targetPath>
