@@ -1,5 +1,6 @@
 package com.boboo.llm.controller;
 
+import cn.hutool.core.io.FileUtil;
 import com.boboo.llm.dto.request.ChatRequestDTO;
 import com.boboo.llm.dto.request.EmbeddingRequestDTO;
 import com.boboo.llm.dto.response.ChatResponseDTO;
@@ -10,6 +11,7 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
+import org.springframework.ai.chat.messages.Media;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaOptions;
@@ -18,10 +20,13 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.MimeType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -58,8 +63,8 @@ public class CommonLLMController {
      * @param requestDTO 聊天请求类
      */
     @PostMapping(value = "/chat")
-    public ChatResponseDTO chat(@RequestBody ChatRequestDTO requestDTO) {
-        String content = getChatClientRequest(requestDTO)
+    public ChatResponseDTO chat(ChatRequestDTO requestDTO, @RequestPart(value = "file") MultipartFile file) {
+        String content = getChatClientRequest(requestDTO, file)
                 .call()
                 .content();
         return new ChatResponseDTO(content, requestDTO.getSessionId());
@@ -71,8 +76,8 @@ public class CommonLLMController {
      * @param requestDTO 聊天请求类
      */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<ChatResponseDTO>> chatStream(@RequestBody ChatRequestDTO requestDTO) {
-        return getChatClientRequest(requestDTO)
+    public Flux<ServerSentEvent<ChatResponseDTO>> chatStream(ChatRequestDTO requestDTO, @RequestPart(value = "file") MultipartFile file) {
+        return getChatClientRequest(requestDTO, file)
                 .stream()
                 .content()
                 .map(content -> ServerSentEvent.builder(new ChatResponseDTO(content, requestDTO.getSessionId()))
@@ -98,8 +103,9 @@ public class CommonLLMController {
      * 构建ChatClientRequest
      *
      * @param requestDTO 聊天请求类
+     * @param file       文件
      */
-    private ChatClient.ChatClientRequest getChatClientRequest(ChatRequestDTO requestDTO) {
+    private ChatClient.ChatClientRequest getChatClientRequest(ChatRequestDTO requestDTO, MultipartFile file) {
         if (!StringUtils.hasText(requestDTO.getSessionId())) {
             requestDTO.setSessionId(UUID.randomUUID().toString());
         }
@@ -111,7 +117,15 @@ public class CommonLLMController {
         RequestResponseAdvisor vectorStoreChatMemoryAdvisor = new QuestionAnswerAdvisor(redisVectorStore, SearchRequest.defaults().withSimilarityThreshold(0.875).withTopK(3));
         ChatClient.ChatClientRequest chatClientRequest = ChatClient.builder(chatModel).build()
                 .prompt()
-                .user(requestDTO.getPrompt())
+                .user(userSpec -> {
+                    userSpec.text(requestDTO.getPrompt());
+                    if (file != null) {
+                        String mimeType = FileUtil.getMimeType(file.getOriginalFilename());
+                        if (StringUtils.hasText(mimeType)) {
+                            userSpec.media(new Media(MimeType.valueOf(mimeType), file.getResource()));
+                        }
+                    }
+                })
                 // MessageChatMemoryAdvisor会在消息发送给大模型之前，从ChatMemory中获取会话的历史消息，
                 // 然后一起发送给大模型。
                 .advisors(messageChatMemoryAdvisor, vectorStoreChatMemoryAdvisor);
