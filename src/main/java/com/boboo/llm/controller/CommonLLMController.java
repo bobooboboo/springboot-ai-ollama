@@ -63,7 +63,7 @@ public class CommonLLMController {
      * @param requestDTO 聊天请求类
      */
     @PostMapping(value = "/chat")
-    public ChatResponseDTO chat(ChatRequestDTO requestDTO, @RequestPart(value = "file") MultipartFile file) {
+    public ChatResponseDTO chat(ChatRequestDTO requestDTO, @RequestPart(value = "file", required = false) MultipartFile file) {
         String content = getChatClientRequest(requestDTO, file)
                 .call()
                 .content();
@@ -76,7 +76,7 @@ public class CommonLLMController {
      * @param requestDTO 聊天请求类
      */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<ChatResponseDTO>> chatStream(ChatRequestDTO requestDTO, @RequestPart(value = "file") MultipartFile file) {
+    public Flux<ServerSentEvent<ChatResponseDTO>> chatStream(ChatRequestDTO requestDTO, @RequestPart(value = "file", required = false) MultipartFile file) {
         return getChatClientRequest(requestDTO, file)
                 .stream()
                 .content()
