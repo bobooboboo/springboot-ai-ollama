@@ -8,15 +8,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.RequestResponseAdvisor;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.messages.Media;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaOptions;
-import org.springframework.ai.vectorstore.RedisVectorStore;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.util.CollectionUtils;
@@ -55,7 +52,7 @@ public class CommonLLMController {
     /**
      * redis向量数据库。向量数据库存储了人工智能模型不知道的数据，通常是企业的内部资料。
      */
-    private final RedisVectorStore redisVectorStore;
+//    private final RedisVectorStore redisVectorStore;
 
     /**
      * 聊天，非流式响应
@@ -93,7 +90,7 @@ public class CommonLLMController {
     @PostMapping(value = "/embedding")
     public Boolean embedding(@RequestBody List<EmbeddingRequestDTO> list) {
         if (!CollectionUtils.isEmpty(list)) {
-            redisVectorStore.add(list.stream().map(EmbeddingRequestDTO::toDocument).toList());
+//            redisVectorStore.add(list.stream().map(EmbeddingRequestDTO::toDocument).toList());
             return true;
         }
         return false;
@@ -114,7 +111,7 @@ public class CommonLLMController {
         // 3. 只需要携带最近20条消息，可自定义。
         RequestResponseAdvisor messageChatMemoryAdvisor = new MessageChatMemoryAdvisor(chatMemory, requestDTO.getSessionId(), 20);
         // QuestionAnswerAdvisor可以在用户发起的提问时，先向数据库查询相关的文档，再把相关的文档拼接到用户的提问中，再让模型生成答案。
-        RequestResponseAdvisor vectorStoreChatMemoryAdvisor = new QuestionAnswerAdvisor(redisVectorStore, SearchRequest.defaults().withSimilarityThreshold(0.875).withTopK(3));
+//        RequestResponseAdvisor vectorStoreChatMemoryAdvisor = new QuestionAnswerAdvisor(redisVectorStore, SearchRequest.defaults().withSimilarityThreshold(0.875).withTopK(3));
         ChatClient.ChatClientRequest chatClientRequest = ChatClient.builder(chatModel).build()
                 .prompt()
                 .user(userSpec -> {
@@ -128,7 +125,9 @@ public class CommonLLMController {
                 })
                 // MessageChatMemoryAdvisor会在消息发送给大模型之前，从ChatMemory中获取会话的历史消息，
                 // 然后一起发送给大模型。
-                .advisors(messageChatMemoryAdvisor, vectorStoreChatMemoryAdvisor);
+                .advisors(messageChatMemoryAdvisor
+//                        , vectorStoreChatMemoryAdvisor
+                );
         addChatOptionsIfPossible(chatModel, chatClientRequest, requestDTO.getModel());
         return chatClientRequest;
     }
